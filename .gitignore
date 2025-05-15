@@ -1,0 +1,10 @@
+# Ignore Python files and environment
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.pot
+.env
+
+# If virtual env accidentally here
+env/
