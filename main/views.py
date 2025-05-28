@@ -371,54 +371,65 @@ def customer_change_password (request, customer_id):
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
 class StripeCheckoutView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             cart_data = request.data.get('cartData')
             order_id = request.data.get('order_id')
+            shipment_fee = int(request.data.get('shipment_fee', 250))  # Default to 250 if not provided
 
-            # Log incoming request data
             print(f"Received cart_data: {cart_data}")
             print(f"Received order_id: {order_id}")
+            print(f"Shipment Fee: {shipment_fee}")
 
             if not cart_data:
                 return Response({'error': 'Cart data is empty or missing'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Convert cart data to line items for Stripe
+            # Convert cart data to Stripe line items
             line_items = [
-            {
+                {
+                    'price_data': {
+                        'currency': 'pkr',
+                        'product_data': {
+                            'name': item['product']['title'],
+                            'images': [item['product']['image']],
+                        },
+                        'unit_amount': int(item['product']['price'] * 100),  # Stripe requires smallest currency unit
+                    },
+                    'quantity': item.get('quantity', 1),
+                }
+                for item in cart_data
+            ]
+
+            # Add shipment fee as a line item
+            line_items.append({
                 'price_data': {
                     'currency': 'pkr',
                     'product_data': {
-                        'name': item['product']['title'],
-                        'images': [item['product']['image']],
+                        'name': 'Shipping Fee',
                     },
-                    'unit_amount': int(item['product']['price'] * 100),  # Convert to cents
+                    'unit_amount': shipment_fee * 100,
                 },
                 'quantity': 1,
-            }
-            for item in cart_data
-        ]
-            
+            })
+
             # Create Stripe Checkout Session
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=line_items,
                 mode='payment',
                 success_url=settings.SITE_URL + '/payment/success?success=true&session_id={CHECKOUT_SESSION_ID}',
-                #success_url=settings.SITE_URL + '/payment/success?session_id={CHECKOUT_SESSION_ID}',
                 cancel_url=settings.SITE_URL + '/payment/cancel',
-                 metadata={
-                    'order_id': str(order_id),  # Pass the related order ID
+                metadata={
+                    'order_id': str(order_id),
                 },
             )
 
             return Response({'url': checkout_session.url}, status=status.HTTP_200_OK)
 
-
-           
         except Exception as e:
-            print(f"Error in StripeCheckoutView: {str(e)}")  # Logs the error
+            print(f"Error in StripeCheckoutView: {str(e)}")
             return Response(
                 {'error': 'Something went wrong when creating Stripe checkout session'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -98,7 +98,8 @@ class Product(models.Model):
     slug = models.SlugField(unique=True, null=True)
     tags = models.TextField( null=True)
     image = models.ImageField(upload_to='product_imgs/', null=True, validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'webp'])])
-
+    inventory = models.PositiveIntegerField(default=1, validators=[MinValueValidator(0)])
+    
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.image:
@@ -117,6 +118,13 @@ class Product(models.Model):
     
     def average_rating(self):
         return self.product_ratings.aggregate(Avg('rating'))['rating__avg'] or 0
+    
+    def decrease_inventory(self, quantity):
+        if self.inventory >= quantity:
+            self.inventory -= quantity
+            self.save()
+            return True
+        return False  # Not enough inventory
     
 
 # Customer model
@@ -187,6 +195,16 @@ class OrderItem(models.Model):
     
     def __str__(self) -> str:
         return self.product.title
+    
+    def save(self, *args, **kwargs):
+        # If creating a new item (not updating an existing one)
+        if not self.pk:
+            if self.product.inventory >= self.qty:
+                self.product.inventory -= self.qty
+                self.product.save()
+            else:
+                raise ValueError(f"Not enough inventory for product: {self.product.title}")
+        super().save(*args, **kwargs)
 
 
 # Customer Address model

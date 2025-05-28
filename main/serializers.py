@@ -49,7 +49,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     seller = serializers.PrimaryKeyRelatedField(queryset=models.Seller.objects.all())
     class Meta:
         model = models.Product
-        fields = ['id', 'category', 'prod_category', 'seller_loc', 'seller', 'title', 'slug', 'tag_list', 'detail', 'price', 'product_ratings', 'image', 'tags', 'average_rating']
+        fields = ['id', 'category', 'prod_category', 'seller_loc', 'seller', 'inventory', 'title', 'slug', 'tag_list', 'detail', 'price', 'product_ratings', 'image', 'tags', 'average_rating']
         depth = 1  # Define depth directly in Meta
 
     def __init__(self, *args, **kwargs):
@@ -88,7 +88,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Product
         fields = [
-            'id', 'category', 'seller', 'title', 'slug', 'tag_list', 'detail', 'price', 
+            'id', 'category', 'seller', 'title', 'inventory', 'slug', 'tag_list', 'detail', 'price', 
             'product_ratings', 'product_imgs', 'image', 
             'tags', 'average_rating'
         ]
